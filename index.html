@@ -236,7 +236,7 @@ footer{border-top:1px solid var(--line);padding-top:16px;color:var(--mute);font-
   <header class="top">
     <div>
       <h1>음악 장르 지도</h1>
-      <p class="sub">장르 20개의 계보와 앨범 60장의 해설, 세계 음악 장르 목록을 모았습니다. 그 밖의 아티스트와 앨범은 이름으로 찾으면 음악 데이터베이스에서 불러옵니다.</p>
+      <p class="sub">장르 20개의 계보와 앨범 60장의 해설, 세계 음악 장르 목록을 모았습니다. 그 밖의 아티스트와 앨범은 이름으로 찾으면 위키백과 소개를 불러옵니다.</p>
     </div>
     <div class="search">
       <label for="q">장르, 앨범, 아티스트, 곡 찾기</label>
@@ -261,13 +261,13 @@ footer{border-top:1px solid var(--line);padding-top:16px;color:var(--mute);font-
   <main id="detail"></main>
   <section id="ask">
     <h2>아티스트·앨범 찾아보기</h2>
-    <p>아티스트나 앨범 이름을 넣으면 음악 데이터베이스 MusicBrainz에서 찾아 음반 목록과 수록곡, 위키백과 소개를 보여 줍니다. 한글 이름으로 안 나오면 영어 이름으로 찾아보세요.</p>
+    <p>아티스트나 앨범 이름을 넣으면 위키백과 소개 글을 불러오고, 음악 데이터베이스 사이트로 가는 링크를 함께 보여 줍니다.</p>
     <form id="askf"><input id="askq" type="search" autocomplete="off" placeholder="예: Radiohead, 김광석, Rumours" aria-label="아티스트나 앨범 이름"><button type="submit">찾기</button></form>
     <div id="askout"></div>
   </section>
   <section id="all"></section>
 
-  <footer>해설과 평가 요약, 장르 설명은 Claude가 직접 썼고, 기존 평론을 옮긴 것이 아닙니다. 장르 구분과 영향 관계는 널리 받아들여지는 큰 흐름을 단순화한 것이라 실제 역사는 이보다 훨씬 얽혀 있습니다. 앨범 재킷 자리의 검은 사각형은 실제 재킷이 아닙니다. 전체 장르 목록도 널리 쓰이는 이름을 모은 것이며, 장르는 지금도 계속 새로 생기고 있습니다. 아티스트와 앨범 검색 결과는 MusicBrainz와 위키백과에서 불러온 것입니다.</footer>
+  <footer>해설과 평가 요약, 장르 설명은 Claude가 직접 썼고, 기존 평론을 옮긴 것이 아닙니다. 장르 구분과 영향 관계는 널리 받아들여지는 큰 흐름을 단순화한 것이라 실제 역사는 이보다 훨씬 얽혀 있습니다. 앨범 재킷 자리의 검은 사각형은 실제 재킷이 아닙니다. 전체 장르 목록도 널리 쓰이는 이름을 모은 것이며, 장르는 지금도 계속 새로 생기고 있습니다. 아티스트와 앨범 검색 결과는 위키백과에서 불러온 것입니다.</footer>
 </div>
 
 <div id="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle"><div class="sheet">
@@ -793,7 +793,7 @@ q.addEventListener("input",function(){
     a.tr.forEach(function(t){if(t[0].toLowerCase().indexOf(v)>=0)out.push('<button data-a="'+a.id+'">'+esc(t[0])+'<small>곡 · '+esc(a.a)+' · '+esc(a.t)+'</small></button>')});
   });
   ALLG.forEach(function(f,i){f[2].forEach(function(s){if(s.toLowerCase().indexOf(v)>=0)out.push('<button data-f="'+i+'" data-s="'+esc(s)+'">'+esc(s)+'<small>전체 장르 목록 · '+esc(f[0])+'</small></button>')})});
-  var askrow='<button class="askrow" data-ask="'+esc(q.value.trim())+'">‘'+esc(q.value.trim())+'’ 아티스트·앨범 찾아보기<small>음악 데이터베이스에서 음반 목록과 수록곡을 불러옵니다</small></button>';
+  var askrow='<button class="askrow" data-ask="'+esc(q.value.trim())+'">‘'+esc(q.value.trim())+'’ 아티스트·앨범 찾아보기<small>위키백과 소개와 음악 사이트 링크를 보여 줍니다</small></button>';
   R.innerHTML=out.slice(0,12).join("")+askrow;
   R.classList.add("on");
 });
@@ -898,13 +898,6 @@ function xlinks(q,album){
 var LASTFM_KEY=""; // 선택 사항: Last.fm API 키를 넣으면 인기곡과 비슷한 아티스트가 함께 나옵니다 (README 참고)
 function jget(u){return fetch(u).then(function(r){if(!r.ok){var e=new Error("HTTP "+r.status);e.status=r.status;throw e}return r.json()})}
 function why(e){var m=e&&e.message?String(e.message):"알 수 없는 오류";if(e&&e.status===503||e&&e.status===429)return "요청이 몰려 잠시 막혔습니다 ("+m+")";if(/Failed to fetch|NetworkError|Load failed/i.test(m))return "서버에 연결하지 못했습니다 ("+m+")";return m}
-var mbChain=Promise.resolve(),mbLast=0;
-function mb(path){
-  var url="https://musicbrainz.org/ws/2/"+path+(path.indexOf("?")>=0?"&":"?")+"fmt=json";
-  var once=function(gap){var w=Math.max(0,gap-(Date.now()-mbLast));return new Promise(function(r){setTimeout(r,w)}).then(function(){mbLast=Date.now();return jget(url)})};
-  var run=function(){return once(1100).catch(function(){return once(2500)}).catch(function(){return once(5000)})};
-  var p=mbChain.then(run,run);mbChain=p.catch(function(){});return p;
-}
 function lfm(params){return jget("https://ws.audioscrobbler.com/2.0/?format=json&api_key="+encodeURIComponent(LASTFM_KEY)+"&"+params).then(function(d){if(d.error)throw new Error(d.message);return d})}
 function wikiIntro(lang,title){
   return jget("https://"+lang+".wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=extracts%7Cinfo&exintro=1&explaintext=1&inprop=url&redirects=1&titles="+encodeURIComponent(title)).then(function(d){
@@ -919,109 +912,44 @@ function wikiSearch(q){
     return wikiIntro("ko",ko).then(function(k){return k&&k.text.length>80?k:enw},function(){return enw});
   });
 }
-function wikiByRels(rels){
-  var q=null;(rels||[]).forEach(function(r){if(r.type==="wikidata"&&r.url){var m=/Q\d+/.exec(r.url.resource||"");if(m)q=m[0]}});
-  if(!q)return Promise.resolve(null);
-  return jget("https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&props=sitelinks&sitefilter=kowiki%7Cenwiki&ids="+q).then(function(d){
-    var s=((d.entities||{})[q]||{}).sitelinks||{};
-    if(s.kowiki)return wikiIntro("ko",s.kowiki.title).then(function(k){return (k&&k.text.length>80)||!s.enwiki?k:wikiIntro("en",s.enwiki.title)});
-    return s.enwiki?wikiIntro("en",s.enwiki.title):null;
-  });
-}
 function wikiHTML(w){
   if(!w)return "";
   return w.text.split(/\n+/).filter(Boolean).slice(0,4).map(function(p){return '<p>'+esc(p)+'</p>'}).join("")+
     '<div class="xl"><span>'+(w.lang==="ko"?"한국어":"영어")+' 위키백과 「'+esc(w.title)+'」</span><a href="'+esc(w.url)+'" target="_blank" rel="noopener">전체 글 읽기 ↗</a></div>';
 }
 var askSeq=0;
-function yr(d){return d?String(d).slice(0,4):""}
-function credit(ac){return (ac||[]).map(function(c){return (c.name||(c.artist&&c.artist.name)||"")+(c.joinphrase||"")}).join("")}
-function topTags(x){return (x.genres&&x.genres.length?x.genres:x.tags||[]).slice().sort(function(a,b){return (b.count||0)-(a.count||0)}).slice(0,6)}
-function tagsHTML(t){return t.length?'<ul class="tags">'+t.map(function(x){return '<li>'+esc(x.name)+'</li>'}).join("")+'</ul>':''}
-function candHTML(arts,rgs){
-  var s="";
-  if(arts.length)s+='<h5>아티스트</h5><ul>'+arts.map(function(a){
-    var ls=a["life-span"]||{},m=[a.type==="Group"?"그룹":a.type==="Person"?"개인":"",a.country||(a.area&&a.area.name)||"",ls.begin?yr(ls.begin)+"~":"",a.disambiguation||""].filter(Boolean).join(" · ");
-    return '<li><button class="chip" data-mba="'+esc(a.id)+'">'+esc(a.name)+'</button><span></span><small>'+esc(m)+'</small></li>'}).join("")+'</ul>';
-  if(rgs.length)s+='<h5>앨범</h5><ul>'+rgs.map(function(r){
-    return '<li><button class="chip" data-mbr="'+esc(r.id)+'">'+esc(r.title)+'</button><span></span><small>'+esc([credit(r["artist-credit"]),yr(r["first-release-date"]),r["primary-type"]||""].filter(Boolean).join(" · "))+'</small></li>'}).join("")+'</ul>';
-  return s;
+function wikiSearchKo(q){
+  return jget("https://ko.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=1&prop=extracts%7Cinfo&exintro=1&explaintext=1&inprop=url&redirects=1&gsrsearch="+encodeURIComponent(q)).then(function(d){
+    var p=d.query&&d.query.pages;if(!p)return null;var x=p[Object.keys(p)[0]];
+    return x&&x.extract&&x.extract.length>60?{lang:"ko",title:x.title,text:x.extract,url:x.fullurl}:null});
 }
-function askMsg(title,msg,q){$("#askout").innerHTML=(title?'<h3>'+esc(title)+'</h3>':'')+'<p class="warn">'+msg+'</p>'+(q?xlinks(q,false):'')}
+function askFind(q){
+  var en=function(){return wikiSearch(q+" musician OR band OR singer OR album")},ko=function(){return wikiSearchKo(q)};
+  var first=/[가-힣]/.test(q)?ko:en,second=first===ko?en:ko;
+  return first().then(function(w){return w||second()},function(){return second()});
+}
 async function ask(q){
   q=(q||"").trim();if(!q)return;var my=++askSeq;
   $("#askq").value=q;$("#results").classList.remove("on");$("#ask").scrollIntoView({block:"start"});
-  $("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="kicker">MusicBrainz에서 찾는 중입니다.</p>';
-  try{
-    var A=await mb("artist?limit=5&query="+encodeURIComponent(q));if(my!==askSeq)return;
-    var R=await mb("release-group?limit=5&query="+encodeURIComponent(q));if(my!==askSeq)return;
-    var arts=A.artists||[],rgs=R["release-groups"]||[],lq=q.toLowerCase();
-    if(!arts.length&&!rgs.length){askMsg(q,"이 이름으로 등록된 아티스트나 앨범을 찾지 못했습니다. 철자를 바꾸거나 영어 이름으로 찾아보세요.",q);return}
-    if(arts[0]&&String(arts[0].name).toLowerCase()===lq){showArtist(arts[0].id,candHTML(arts.slice(1),rgs));return}
-    if(rgs[0]&&String(rgs[0].title).toLowerCase()===lq){showAlbum(rgs[0].id,candHTML(arts,rgs.slice(1)));return}
-    $("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="kicker">찾은 결과입니다. 하나를 고르세요.</p>'+candHTML(arts,rgs)+xlinks(q,false);
-  }catch(e){
-    if(my!==askSeq)return;
-    var note='음악 데이터베이스 MusicBrainz에서 불러오지 못했습니다. '+esc(why(e))+'. 세 번 시도했습니다.';
-    $("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="warn">'+note+' 대신 위키백과에서 찾는 중입니다.</p>';
-    wikiSearch(q+" music").then(function(w){
-      if(my!==askSeq)return;
-      $("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="warn">'+note+' 음반 목록 없이 위키백과 글만 보여 드립니다.</p>'+(w?'<div class="hist">'+wikiHTML(w)+'</div>':'')+xlinks(q,false)+'<div><button class="chip" data-ask="'+esc(q)+'">다시 시도</button></div>';
-    },function(e2){if(my===askSeq)$("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="warn">'+note+' 위키백과도 불러오지 못했습니다 ('+esc(why(e2))+'). 인터넷 연결이나 광고 차단 설정을 확인해 주세요.</p>'+xlinks(q,false)+'<div><button class="chip" data-ask="'+esc(q)+'">다시 시도</button></div>'});
-  }
-}
-async function showArtist(id,others){
-  var my=++askSeq;$("#ask").scrollIntoView({block:"start"});
-  $("#askout").innerHTML='<p class="kicker">아티스트 정보를 불러오는 중입니다.</p>';
-  try{
-    var a=await mb("artist/"+id+"?inc=tags+genres+url-rels");if(my!==askSeq)return;
-    var ls=a["life-span"]||{};
-    var meta=[a.type==="Group"?"그룹":a.type==="Person"?"개인":"아티스트",(a.area&&a.area.name)||a.country,ls.begin?yr(ls.begin)+"~"+(ls.ended?yr(ls.end):""):""].filter(Boolean).map(esc).join(" · ");
-    $("#askout").innerHTML='<div><p class="kicker">'+meta+'</p><h3>'+esc(a.name)+'</h3></div>'+tagsHTML(topTags(a))+
-      '<div id="a-wiki" class="hist"><p class="kicker">위키백과 소개를 불러오는 중입니다.</p></div>'+xlinks(a.name,false)+
-      '<div id="a-disc"><p class="kicker">음반 목록을 불러오는 중입니다.</p></div><div id="a-top"></div><div id="a-sim"></div>'+
-      (others?'<h5>같은 검색어의 다른 결과</h5>'+others:'')+'<p class="kicker">자료: MusicBrainz, 위키백과'+(LASTFM_KEY?', Last.fm':'')+'</p>';
-    var put=function(sel,html){if(my===askSeq&&$(sel))$(sel).innerHTML=html};
-    wikiByRels(a.relations).then(function(w){return w||wikiSearch(a.name+" musician OR band OR singer")}).then(function(w){put("#a-wiki",wikiHTML(w))},function(){put("#a-wiki","")});
-    mb("release-group?artist="+id+"&type=album%7Cep&limit=100").then(function(d){
-      var g=(d["release-groups"]||[]).filter(function(r){return !(r["secondary-types"]||[]).length}).sort(function(x,y){return String(x["first-release-date"]||"9").localeCompare(String(y["first-release-date"]||"9"))});
-      put("#a-disc",g.length?'<h5>음반 '+g.length+'장 (발매순. 이름을 누르면 수록곡이 나옵니다)</h5><ul>'+g.map(function(r){
-        return '<li><button class="chip" data-mbr="'+esc(r.id)+'">'+esc(r.title)+'</button>'+yt(a.name+" "+r.title+" full album")+'<small>'+esc([yr(r["first-release-date"]),r["primary-type"]==="EP"?"EP":"정규 앨범"].filter(Boolean).join(" · "))+'</small></li>'}).join("")+'</ul>':'<p class="kicker">등록된 정규 음반이 없습니다.</p>');
-    },function(e){put("#a-disc",'<p class="warn">음반 목록을 불러오지 못했습니다. '+esc(why(e))+'.</p>')});
-    if(LASTFM_KEY){
-      lfm("method=artist.gettoptracks&autocorrect=1&limit=8&artist="+encodeURIComponent(a.name)).then(function(d){
-        var t=((d.toptracks||{}).track)||[];if(t.length)put("#a-top",'<h5>많이 듣는 곡 (Last.fm)</h5><ul>'+t.map(function(x){return '<li><span class="nm">'+esc(x.name)+'</span>'+yt(a.name+" "+x.name)+'</li>'}).join("")+'</ul>')},function(){});
-      lfm("method=artist.getsimilar&autocorrect=1&limit=8&artist="+encodeURIComponent(a.name)).then(function(d){
-        var t=((d.similarartists||{}).artist)||[];if(t.length)put("#a-sim",'<h5>비슷한 아티스트 (Last.fm. 누르면 이어서 찾습니다)</h5><div class="simb">'+t.map(function(x){return '<button class="chip" data-ask="'+esc(x.name)+'">'+esc(x.name)+'</button>'}).join("")+'</div>')},function(){});
-    }
-  }catch(e){if(my===askSeq)askMsg("","아티스트 정보를 불러오지 못했습니다. "+esc(why(e))+'. 잠시 뒤 다시 시도해 주세요.',"")}
-}
-function mmss(ms){if(!ms)return "";var s=Math.round(ms/1000);return Math.floor(s/60)+":"+("0"+s%60).slice(-2)}
-async function showAlbum(id,others){
-  var my=++askSeq;$("#ask").scrollIntoView({block:"start"});
-  $("#askout").innerHTML='<p class="kicker">앨범 정보를 불러오는 중입니다.</p>';
-  try{
-    var r=await mb("release-group/"+id+"?inc=artist-credits+tags+genres+url-rels+releases");if(my!==askSeq)return;
-    var ac=r["artist-credit"]||[],art=credit(ac),aid=ac[0]&&ac[0].artist&&ac[0].artist.id;
-    $("#askout").innerHTML='<div><p class="kicker">'+esc([r["primary-type"]==="EP"?"EP":"앨범",yr(r["first-release-date"])].filter(Boolean).join(" · "))+'</p><h3>'+esc(r.title)+'</h3></div>'+
-      (aid?'<div><button class="chip" data-mba="'+esc(aid)+'">'+esc(art)+' 아티스트 보기</button></div>':'<p>'+esc(art)+'</p>')+tagsHTML(topTags(r))+
-      '<div id="a-wiki" class="hist"><p class="kicker">위키백과 소개를 불러오는 중입니다.</p></div>'+xlinks(art+" "+r.title,true)+
-      '<div id="a-disc"><p class="kicker">수록곡을 불러오는 중입니다.</p></div>'+(others?'<h5>같은 검색어의 다른 결과</h5>'+others:'')+'<p class="kicker">자료: MusicBrainz, 위키백과</p>';
-    var put=function(sel,html){if(my===askSeq&&$(sel))$(sel).innerHTML=html};
-    wikiByRels(r.relations).then(function(w){return w||wikiSearch(r.title+" "+art+" album")}).then(function(w){put("#a-wiki",wikiHTML(w))},function(){put("#a-wiki","")});
-    var rels=(r.releases||[]).slice().sort(function(x,y){return String(x.date||"9").localeCompare(String(y.date||"9"))}),rel=rels.filter(function(x){return x.status==="Official"})[0]||rels[0];
-    if(!rel){put("#a-disc","");return}
-    mb("release/"+rel.id+"?inc=recordings").then(function(d){
-      var t=[];(d.media||[]).forEach(function(m){(m.tracks||[]).forEach(function(x){t.push(x)})});
-      put("#a-disc",t.length?'<h5>수록곡 '+t.length+'곡</h5><ul>'+t.map(function(x,i){return '<li><span class="nm">'+(i+1)+'. '+esc(x.title)+'</span>'+yt(art+" "+x.title)+'<small>'+mmss(x.length)+'</small></li>'}).join("")+'</ul>':'');
-    },function(){put("#a-disc",'<p class="warn">수록곡을 불러오지 못했습니다.</p>')});
-  }catch(e){if(my===askSeq)askMsg("","앨범 정보를 불러오지 못했습니다. "+esc(why(e))+'. 잠시 뒤 다시 시도해 주세요.',"")}
+  $("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="kicker">위키백과에서 찾는 중입니다.</p>';
+  var w=null,err=null;
+  try{w=await askFind(q)}catch(e){err=e}
+  if(my!==askSeq)return;
+  var s='<h3>'+esc(w?w.title:q)+'</h3>';
+  if(w)s+='<div class="hist">'+wikiHTML(w)+'</div><p class="kicker">검색어와 가장 가까운 위키백과 글입니다. 찾던 것이 아니면 아래 링크에서 직접 찾아보세요.</p>';
+  else s+='<p class="warn">'+(err?'위키백과에서 불러오지 못했습니다. '+esc(why(err))+'.':'위키백과에서 이 이름의 글을 찾지 못했습니다. 철자를 바꾸거나 영어 이름으로 찾아보세요.')+'</p>';
+  s+=xlinks(q,false)+'<div id="a-alb"></div><div id="a-top"></div><div id="a-sim"></div>';
+  $("#askout").innerHTML=s;
+  if(!LASTFM_KEY)return;
+  var put=function(sel,html){if(my===askSeq&&$(sel))$(sel).innerHTML=html},a=encodeURIComponent(q);
+  lfm("method=artist.gettopalbums&autocorrect=1&limit=8&artist="+a).then(function(d){
+    var t=((d.topalbums||{}).album)||[];if(t.length)put("#a-alb",'<h5>많이 듣는 앨범 (Last.fm)</h5><ul>'+t.map(function(x){return '<li><span class="nm">'+esc(x.name)+'</span>'+yt(q+" "+x.name+" full album")+'</li>'}).join("")+'</ul>')},function(){});
+  lfm("method=artist.gettoptracks&autocorrect=1&limit=8&artist="+a).then(function(d){
+    var t=((d.toptracks||{}).track)||[];if(t.length)put("#a-top",'<h5>많이 듣는 곡 (Last.fm)</h5><ul>'+t.map(function(x){return '<li><span class="nm">'+esc(x.name)+'</span>'+yt(q+" "+x.name)+'</li>'}).join("")+'</ul>')},function(){});
+  lfm("method=artist.getsimilar&autocorrect=1&limit=8&artist="+a).then(function(d){
+    var t=((d.similarartists||{}).artist)||[];if(t.length)put("#a-sim",'<h5>비슷한 아티스트 (Last.fm. 누르면 이어서 찾습니다)</h5><div class="simb">'+t.map(function(x){return '<button class="chip" data-ask="'+esc(x.name)+'">'+esc(x.name)+'</button>'}).join("")+'</div>')},function(){});
 }
 $("#askf").addEventListener("submit",function(e){e.preventDefault();ask($("#askq").value)});
-document.addEventListener("click",function(e){
-  var a=e.target.closest("[data-mba]");if(a){showArtist(a.dataset.mba);return}
-  var r=e.target.closest("[data-mbr]");if(r)showAlbum(r.dataset.mbr);
-});
 var DEEP={};
 function deepRender(w){return '<h5>위키백과 해설</h5>'+wikiHTML(w)}
 function deepBox(n,fam){return '<div class="deep hist" data-deep="'+esc(n)+'" data-fam="'+esc(fam)+'">'+(DEEP[n]?deepRender(DEEP[n]):'<button class="more2" data-deepgo="1">위키백과 해설 불러오기</button>')+'</div>'}
