@@ -771,7 +771,7 @@ addEventListener("hashchange",function(){route(pending);pending=false});
 document.addEventListener("click",function(e){
   var cb=e.target.closest("[data-close]");
   if(cb){var bx=document.getElementById("gd-"+cb.dataset.close);bx.classList.remove("on");document.querySelectorAll("#fam-"+cb.dataset.close+" .subs button.on").forEach(function(b){b.classList.remove("on")});return}
-  var sb=e.target.closest("[data-s]");
+  var sb=e.target.closest("button[data-s]");
   if(sb){openSub(+sb.dataset.f,sb.dataset.s,!!sb.closest("#results"));$("#results").classList.remove("on");return}
   if(e.target.closest("#modal"))return;
   var ab=e.target.closest("[data-ask]");if(ab){ask(ab.dataset.ask);return}
@@ -896,10 +896,13 @@ function xlinks(q,album){
   return '<div class="xl"><span>다른 사이트에서 확인</span>'+L.map(function(l){return '<a href="'+l[1]+'" target="_blank" rel="noopener">'+l[0]+' ↗</a>'}).join("")+'</div>';
 }
 var LASTFM_KEY=""; // 선택 사항: Last.fm API 키를 넣으면 인기곡과 비슷한 아티스트가 함께 나옵니다 (README 참고)
-function jget(u){return fetch(u).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})}
+function jget(u){return fetch(u).then(function(r){if(!r.ok){var e=new Error("HTTP "+r.status);e.status=r.status;throw e}return r.json()})}
+function why(e){var m=e&&e.message?String(e.message):"알 수 없는 오류";if(e&&e.status===503||e&&e.status===429)return "요청이 몰려 잠시 막혔습니다 ("+m+")";if(/Failed to fetch|NetworkError|Load failed/i.test(m))return "서버에 연결하지 못했습니다 ("+m+")";return m}
 var mbChain=Promise.resolve(),mbLast=0;
 function mb(path){
-  var run=function(){var w=Math.max(0,1100-(Date.now()-mbLast));return new Promise(function(r){setTimeout(r,w)}).then(function(){mbLast=Date.now();return jget("https://musicbrainz.org/ws/2/"+path+(path.indexOf("?")>=0?"&":"?")+"fmt=json")})};
+  var url="https://musicbrainz.org/ws/2/"+path+(path.indexOf("?")>=0?"&":"?")+"fmt=json";
+  var once=function(gap){var w=Math.max(0,gap-(Date.now()-mbLast));return new Promise(function(r){setTimeout(r,w)}).then(function(){mbLast=Date.now();return jget(url)})};
+  var run=function(){return once(1100).catch(function(){return once(2500)}).catch(function(){return once(5000)})};
   var p=mbChain.then(run,run);mbChain=p.catch(function(){});return p;
 }
 function lfm(params){return jget("https://ws.audioscrobbler.com/2.0/?format=json&api_key="+encodeURIComponent(LASTFM_KEY)+"&"+params).then(function(d){if(d.error)throw new Error(d.message);return d})}
@@ -957,7 +960,15 @@ async function ask(q){
     if(arts[0]&&String(arts[0].name).toLowerCase()===lq){showArtist(arts[0].id,candHTML(arts.slice(1),rgs));return}
     if(rgs[0]&&String(rgs[0].title).toLowerCase()===lq){showAlbum(rgs[0].id,candHTML(arts,rgs.slice(1)));return}
     $("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="kicker">찾은 결과입니다. 하나를 고르세요.</p>'+candHTML(arts,rgs)+xlinks(q,false);
-  }catch(e){if(my===askSeq)askMsg(q,"데이터를 불러오지 못했습니다. 잠시 뒤 다시 시도하거나 아래 링크로 찾아보세요.",q)}
+  }catch(e){
+    if(my!==askSeq)return;
+    var note='음악 데이터베이스 MusicBrainz에서 불러오지 못했습니다. '+esc(why(e))+'. 세 번 시도했습니다.';
+    $("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="warn">'+note+' 대신 위키백과에서 찾는 중입니다.</p>';
+    wikiSearch(q+" music").then(function(w){
+      if(my!==askSeq)return;
+      $("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="warn">'+note+' 음반 목록 없이 위키백과 글만 보여 드립니다.</p>'+(w?'<div class="hist">'+wikiHTML(w)+'</div>':'')+xlinks(q,false)+'<div><button class="chip" data-ask="'+esc(q)+'">다시 시도</button></div>';
+    },function(e2){if(my===askSeq)$("#askout").innerHTML='<h3>'+esc(q)+'</h3><p class="warn">'+note+' 위키백과도 불러오지 못했습니다 ('+esc(why(e2))+'). 인터넷 연결이나 광고 차단 설정을 확인해 주세요.</p>'+xlinks(q,false)+'<div><button class="chip" data-ask="'+esc(q)+'">다시 시도</button></div>'});
+  }
 }
 async function showArtist(id,others){
   var my=++askSeq;$("#ask").scrollIntoView({block:"start"});
@@ -976,14 +987,14 @@ async function showArtist(id,others){
       var g=(d["release-groups"]||[]).filter(function(r){return !(r["secondary-types"]||[]).length}).sort(function(x,y){return String(x["first-release-date"]||"9").localeCompare(String(y["first-release-date"]||"9"))});
       put("#a-disc",g.length?'<h5>음반 '+g.length+'장 (발매순. 이름을 누르면 수록곡이 나옵니다)</h5><ul>'+g.map(function(r){
         return '<li><button class="chip" data-mbr="'+esc(r.id)+'">'+esc(r.title)+'</button>'+yt(a.name+" "+r.title+" full album")+'<small>'+esc([yr(r["first-release-date"]),r["primary-type"]==="EP"?"EP":"정규 앨범"].filter(Boolean).join(" · "))+'</small></li>'}).join("")+'</ul>':'<p class="kicker">등록된 정규 음반이 없습니다.</p>');
-    },function(){put("#a-disc",'<p class="warn">음반 목록을 불러오지 못했습니다.</p>')});
+    },function(e){put("#a-disc",'<p class="warn">음반 목록을 불러오지 못했습니다. '+esc(why(e))+'.</p>')});
     if(LASTFM_KEY){
       lfm("method=artist.gettoptracks&autocorrect=1&limit=8&artist="+encodeURIComponent(a.name)).then(function(d){
         var t=((d.toptracks||{}).track)||[];if(t.length)put("#a-top",'<h5>많이 듣는 곡 (Last.fm)</h5><ul>'+t.map(function(x){return '<li><span class="nm">'+esc(x.name)+'</span>'+yt(a.name+" "+x.name)+'</li>'}).join("")+'</ul>')},function(){});
       lfm("method=artist.getsimilar&autocorrect=1&limit=8&artist="+encodeURIComponent(a.name)).then(function(d){
         var t=((d.similarartists||{}).artist)||[];if(t.length)put("#a-sim",'<h5>비슷한 아티스트 (Last.fm. 누르면 이어서 찾습니다)</h5><div class="simb">'+t.map(function(x){return '<button class="chip" data-ask="'+esc(x.name)+'">'+esc(x.name)+'</button>'}).join("")+'</div>')},function(){});
     }
-  }catch(e){if(my===askSeq)askMsg("","아티스트 정보를 불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.","")}
+  }catch(e){if(my===askSeq)askMsg("","아티스트 정보를 불러오지 못했습니다. "+esc(why(e))+'. 잠시 뒤 다시 시도해 주세요.',"")}
 }
 function mmss(ms){if(!ms)return "";var s=Math.round(ms/1000);return Math.floor(s/60)+":"+("0"+s%60).slice(-2)}
 async function showAlbum(id,others){
@@ -1004,7 +1015,7 @@ async function showAlbum(id,others){
       var t=[];(d.media||[]).forEach(function(m){(m.tracks||[]).forEach(function(x){t.push(x)})});
       put("#a-disc",t.length?'<h5>수록곡 '+t.length+'곡</h5><ul>'+t.map(function(x,i){return '<li><span class="nm">'+(i+1)+'. '+esc(x.title)+'</span>'+yt(art+" "+x.title)+'<small>'+mmss(x.length)+'</small></li>'}).join("")+'</ul>':'');
     },function(){put("#a-disc",'<p class="warn">수록곡을 불러오지 못했습니다.</p>')});
-  }catch(e){if(my===askSeq)askMsg("","앨범 정보를 불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.","")}
+  }catch(e){if(my===askSeq)askMsg("","앨범 정보를 불러오지 못했습니다. "+esc(why(e))+'. 잠시 뒤 다시 시도해 주세요.',"")}
 }
 $("#askf").addEventListener("submit",function(e){e.preventDefault();ask($("#askq").value)});
 document.addEventListener("click",function(e){
@@ -1020,8 +1031,8 @@ function deepGo(box){
   wikiSearch(q+" music genre").then(function(w){
     if(!w)throw new Error("none");DEEP[n]=w;
     document.querySelectorAll(".deep").forEach(function(b){if(b.dataset.deep===n)b.innerHTML=deepRender(w)});
-  }).catch(function(){
-    box.innerHTML='<p class="warn">위키백과에서 이 장르의 글을 불러오지 못했습니다.</p><div class="xl"><a href="https://ko.wikipedia.org/w/index.php?search='+encodeURIComponent(n)+'" target="_blank" rel="noopener">위키백과에서 직접 찾기 ↗</a></div>';
+  }).catch(function(e){
+    box.innerHTML='<p class="warn">위키백과에서 이 장르의 글을 불러오지 못했습니다. '+esc(why(e))+'.</p><button class="more2" data-deepgo="1">다시 시도</button><div class="xl"><a href="https://ko.wikipedia.org/w/index.php?search='+encodeURIComponent(n)+'" target="_blank" rel="noopener">위키백과에서 직접 찾기 ↗</a></div>';
   });
 }
 document.addEventListener("click",function(e){
